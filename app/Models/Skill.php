@@ -13,12 +13,12 @@ class Skill extends Model
 {
     use HasLocalizedFields;
 
-    protected $fillable = ['category_id', 'name', 'slug', 'summary', 'badge_color', 'is_highlight', 'order'];
+    protected $fillable = ['skill_category_id', 'name', 'slug', 'subtitle', 'accent_color', 'is_highlight', 'order'];
 
     protected function casts(): array
     {
         return [
-            'summary' => 'array',
+            'subtitle' => 'array',
             'is_highlight' => 'boolean',
             'order' => 'integer',
         ];
@@ -26,7 +26,7 @@ class Skill extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(SkillCategory::class, 'category_id');
+        return $this->belongsTo(SkillCategory::class, 'skill_category_id');
     }
 
     public function caseStudies(): BelongsToMany

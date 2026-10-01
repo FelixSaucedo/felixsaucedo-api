@@ -13,13 +13,15 @@ class CareerMilestoneResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'period' => $this->period,
+            'period' => $this->resource->getLocalized('period'),
             'company' => $this->company,
+            'accent_color_hex' => $this->accent_color_hex,
             'order' => $this->order,
             'role' => $this->resource->getLocalized('role'),
             'location' => $this->resource->getLocalized('location'),
             'highlights' => $this->resource->getLocalized('highlights'),
             'translations' => [
+                'period' => $this->period,
                 'role' => $this->role,
                 'location' => $this->location,
                 'highlights' => $this->highlights,

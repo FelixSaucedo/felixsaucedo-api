@@ -15,12 +15,14 @@ class SkillResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'badge_color' => $this->badge_color,
+            'accent_color' => $this->accent_color,
             'is_highlight' => $this->is_highlight,
             'order' => $this->order,
-            'summary' => $this->resource->getLocalized('summary'),
+            'summary' => $this->resource->getLocalized('subtitle'),
+            'subtitle' => $this->resource->getLocalized('subtitle'),
             'translations' => [
-                'summary' => $this->summary,
+                'summary' => $this->subtitle,
+                'subtitle' => $this->subtitle,
             ],
         ];
     }

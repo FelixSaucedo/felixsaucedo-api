@@ -11,11 +11,12 @@ class CareerMilestone extends Model
 {
     use HasLocalizedFields;
 
-    protected $fillable = ['period', 'role', 'company', 'location', 'highlights', 'order'];
+    protected $fillable = ['period', 'role', 'company', 'accent_color_hex', 'location', 'highlights', 'order'];
 
     protected function casts(): array
     {
         return [
+            'period' => 'array',
             'role' => 'array',
             'location' => 'array',
             'highlights' => 'array',

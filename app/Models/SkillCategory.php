@@ -12,7 +12,7 @@ class SkillCategory extends Model
 {
     use HasLocalizedFields;
 
-    protected $fillable = ['slug', 'name', 'order'];
+    protected $fillable = ['slug', 'name', 'default_accent_color', 'order'];
 
     protected function casts(): array
     {
@@ -24,6 +24,6 @@ class SkillCategory extends Model
 
     public function skills(): HasMany
     {
-        return $this->hasMany(Skill::class, 'category_id')->orderBy('order')->orderBy('id');
+        return $this->hasMany(Skill::class, 'skill_category_id')->orderBy('order')->orderBy('id');
     }
 }

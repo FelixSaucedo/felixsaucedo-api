@@ -14,6 +14,7 @@ class SkillCategoryResource extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
+            'default_accent_color' => $this->default_accent_color,
             'order' => $this->order,
             'name' => $this->resource->getLocalized('name'),
             'translations' => [

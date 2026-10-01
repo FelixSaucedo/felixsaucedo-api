@@ -15,6 +15,7 @@ class ContentBlockResource extends JsonResource
             'id' => $this->id,
             'slug' => $this->slug,
             'icon' => $this->icon,
+            'accent_color_hex' => $this->accent_color_hex,
             'metadata' => $this->metadata,
             'order' => $this->order,
             'title' => $this->resource->getLocalized('title'),

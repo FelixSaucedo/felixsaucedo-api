@@ -12,7 +12,7 @@ class ContentBlock extends Model
 {
     use HasLocalizedFields;
 
-    protected $fillable = ['section_id', 'slug', 'title', 'subtitle', 'body', 'icon', 'metadata', 'order'];
+    protected $fillable = ['section_id', 'slug', 'title', 'subtitle', 'body', 'icon', 'accent_color_hex', 'metadata', 'order'];
 
     protected function casts(): array
     {

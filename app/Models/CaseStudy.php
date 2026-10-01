@@ -12,7 +12,7 @@ class CaseStudy extends Model
 {
     use HasLocalizedFields;
 
-    protected $fillable = ['slug', 'title', 'context', 'problem', 'solution', 'tradeoffs', 'impact_metrics', 'is_featured', 'order'];
+    protected $fillable = ['slug', 'title', 'badge_text', 'badge_color_hex', 'context', 'problem', 'solution', 'tradeoffs', 'impact_metrics', 'is_featured', 'order'];
 
     protected function casts(): array
     {

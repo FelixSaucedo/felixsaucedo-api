@@ -14,6 +14,8 @@ class CaseStudyResource extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
+            'badge_text' => $this->badge_text,
+            'badge_color_hex' => $this->badge_color_hex,
             'is_featured' => $this->is_featured,
             'order' => $this->order,
             'title' => $this->resource->getLocalized('title'),
