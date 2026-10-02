@@ -54,6 +54,7 @@
 /storage/app/public/*
 !/storage/app/public/.gitignore
 .phpunit.result.cache
+.pint.cache
 /.phpunit.cache/
 /coverage/
 .phpactor.json

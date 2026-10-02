@@ -17,6 +17,7 @@ use App\Models\SkillCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -224,6 +225,65 @@ class PortfolioApiTest extends TestCase
         $this->getJson('/api/v1/portfolio')->assertOk()
             ->assertJsonPath('categories.1.name', 'Datos & Caché');
         $this->getJson('/api/v1/portfolio?lang=fr')->assertUnprocessable();
+    }
+
+    public function test_portfolio_uses_configured_locales_without_leaking_locale_to_the_next_request(): void
+    {
+        $this->seed();
+        config(['portfolio.default_locale' => 'en', 'app.fallback_locale' => 'es']);
+        App::setLocale('fr');
+        ContentBlock::query()->where('slug', 'hero')->sole()->update([
+            'title' => ['es' => 'Solo español'],
+            'body' => null,
+        ]);
+
+        $this->getJson('/api/v1/portfolio')->assertOk()
+            ->assertJsonPath('categories.1.name', 'Data & Cache')
+            ->assertJsonPath('hero.title', 'Solo español')
+            ->assertJsonPath('hero.body', null);
+        $this->assertSame('fr', App::currentLocale());
+
+        $this->getJson('/api/v1/portfolio?lang=es')->assertOk()
+            ->assertJsonPath('categories.1.name', 'Datos & Caché');
+        $this->assertSame('fr', App::currentLocale());
+    }
+
+    public function test_portfolio_falls_back_to_the_available_translation(): void
+    {
+        $this->seed();
+        config(['app.fallback_locale' => 'es']);
+        ContentBlock::query()->where('slug', 'hero')->sole()->update([
+            'title' => ['en' => 'English only'],
+            'subtitle' => ['es' => null, 'en' => 'English badge'],
+            'body' => [],
+        ]);
+
+        $this->getJson('/api/v1/portfolio?lang=es')->assertOk()
+            ->assertJsonPath('hero.title', 'English only')
+            ->assertJsonPath('hero.badge', 'English badge')
+            ->assertJsonPath('hero.body', null);
+    }
+
+    public function test_portfolio_rejects_array_language_parameters_without_changing_locale(): void
+    {
+        App::setLocale('en');
+
+        $this->getJson('/api/v1/portfolio?lang[]=es')->assertUnprocessable()
+            ->assertJsonValidationErrors('lang');
+        $this->assertSame('en', App::currentLocale());
+    }
+
+    public function test_empty_portfolio_has_no_seeded_content_or_colors(): void
+    {
+        $this->getJson('/api/v1/portfolio')->assertOk()->assertExactJson([
+            'hero' => null,
+            'philosophies' => [],
+            'case_studies' => [],
+            'leadership' => [],
+            'categories' => [],
+            'skills' => [],
+            'career' => [],
+        ]);
     }
 
     public function test_seeder_is_idempotent_and_preserves_existing_admin_password(): void

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Félix Saucedo — Senior Software Engineer & Technical Lead
+ * Architecture & High-Throughput Core Engineering
+ * GitHub: [https://github.com/FelixSaucedo](https://github.com/FelixSaucedo)
+ */
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -95,7 +101,7 @@ class PortfolioSeeder extends Seeder
 
     private function seedCaseStudies(): void
     {
-        $cases = [
+        $caseStudies = [
             [
                 'slug' => 'async-event-processing',
                 'badge_text' => 'AWS Lambda + SQS + Redis',
@@ -131,9 +137,9 @@ class PortfolioSeeder extends Seeder
                 ],
             ],
         ];
-        foreach ($cases as $order => $attributes) {
-            CaseStudy::query()->updateOrCreate(['slug' => $attributes['slug']], [
-                ...$attributes, 'order' => $order + 1,
+        foreach ($caseStudies as $order => $caseStudyAttributes) {
+            CaseStudy::query()->updateOrCreate(['slug' => $caseStudyAttributes['slug']], [
+                ...$caseStudyAttributes, 'order' => $order + 1,
             ]);
         }
     }
@@ -242,10 +248,10 @@ class PortfolioSeeder extends Seeder
             $section = Section::query()->updateOrCreate(['slug' => $slug], [
                 'name' => $name, 'is_active' => true, 'order' => $order + 1,
             ]);
-            foreach ($blocks as $blockOrder => $attributes) {
-                ContentBlock::query()->updateOrCreate(['section_id' => $section->id, 'slug' => $attributes['slug']], [
-                    ...$attributes, 'subtitle' => $attributes['subtitle'] ?? null,
-                    'icon' => $attributes['icon'] ?? null, 'accent_color_hex' => $attributes['accent_color_hex'] ?? null,
+            foreach ($blocks as $blockOrder => $contentBlockAttributes) {
+                ContentBlock::query()->updateOrCreate(['section_id' => $section->id, 'slug' => $contentBlockAttributes['slug']], [
+                    ...$contentBlockAttributes, 'subtitle' => $contentBlockAttributes['subtitle'] ?? null,
+                    'icon' => $contentBlockAttributes['icon'] ?? null, 'accent_color_hex' => $contentBlockAttributes['accent_color_hex'] ?? null,
                     'order' => $blockOrder + 1,
                 ]);
             }

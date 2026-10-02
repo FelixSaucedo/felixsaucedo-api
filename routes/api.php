@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Félix Saucedo — Senior Software Engineer & Technical Lead
+ * Architecture & High-Throughput Core Engineering
+ * GitHub: [https://github.com/FelixSaucedo](https://github.com/FelixSaucedo)
+ */
+
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AuditLogController;

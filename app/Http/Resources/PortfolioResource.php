@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Félix Saucedo — Senior Software Engineer & Technical Lead
+ * Architecture & High-Throughput Core Engineering
+ * GitHub: [https://github.com/FelixSaucedo](https://github.com/FelixSaucedo)
+ */
+
 declare(strict_types=1);
 
 namespace App\Http\Resources;
@@ -17,51 +23,50 @@ class PortfolioResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $lang = $request->query('lang', 'es');
         $sections = $this->resource['sections'];
         $categories = $this->resource['categories'];
         $hero = $sections->get('hero')?->contentBlocks->firstWhere('slug', 'hero');
-        $philosophies = $sections->get('philosophy')?->contentBlocks ?? new Collection;
-        $leadership = $sections->get('leadership')?->contentBlocks ?? new Collection;
+        $philosophies = $sections->get('philosophy')?->contentBlocks ?? new Collection();
+        $leadership = $sections->get('leadership')?->contentBlocks ?? new Collection();
 
         return [
             'hero' => $hero === null ? null : [
-                'title' => $hero->getLocalized('title', $lang),
-                'body' => $hero->getLocalized('body', $lang),
-                'badge' => $hero->getLocalized('subtitle', $lang),
+                'title' => $hero->getLocalized('title'),
+                'body' => $hero->getLocalized('body'),
+                'badge' => $hero->getLocalized('subtitle'),
             ],
-            'philosophies' => $philosophies->map(fn (ContentBlock $block): array => [
-                'icon' => $block->icon,
-                'accent_color_hex' => $block->accent_color_hex,
-                'title' => $block->getLocalized('title', $lang),
-                'body' => $block->getLocalized('body', $lang),
+            'philosophies' => $philosophies->map(fn (ContentBlock $contentBlock): array => [
+                'icon' => $contentBlock->icon,
+                'accent_color_hex' => $contentBlock->accent_color_hex,
+                'title' => $contentBlock->getLocalized('title'),
+                'body' => $contentBlock->getLocalized('body'),
             ])->values()->all(),
-            'case_studies' => $this->resource['case_studies']->map(fn (CaseStudy $study): array => [
-                'title' => $study->getLocalized('title', $lang),
-                'badge_text' => $study->badge_text,
-                'badge_color_hex' => $study->badge_color_hex,
-                'problem' => $study->getLocalized('problem', $lang),
-                'solution' => $study->getLocalized('solution', $lang),
+            'case_studies' => $this->resource['case_studies']->map(fn (CaseStudy $caseStudy): array => [
+                'title' => $caseStudy->getLocalized('title'),
+                'badge_text' => $caseStudy->badge_text,
+                'badge_color_hex' => $caseStudy->badge_color_hex,
+                'problem' => $caseStudy->getLocalized('problem'),
+                'solution' => $caseStudy->getLocalized('solution'),
             ])->values()->all(),
-            'leadership' => $leadership->map(fn (ContentBlock $block): array => [
-                'title' => $block->getLocalized('title', $lang),
-                'body' => $block->getLocalized('body', $lang),
+            'leadership' => $leadership->map(fn (ContentBlock $contentBlock): array => [
+                'title' => $contentBlock->getLocalized('title'),
+                'body' => $contentBlock->getLocalized('body'),
             ])->values()->all(),
-            'categories' => $categories->map(fn (SkillCategory $category): array => [
-                'id' => $category->id,
-                'slug' => $category->slug,
-                'name' => $category->getLocalized('name', $lang),
-                'default_accent_color' => $category->default_accent_color,
+            'categories' => $categories->map(fn (SkillCategory $skillCategory): array => [
+                'id' => $skillCategory->id,
+                'slug' => $skillCategory->slug,
+                'name' => $skillCategory->getLocalized('name'),
+                'default_accent_color' => $skillCategory->default_accent_color,
             ])->values()->all(),
-            'skills' => $categories->flatMap(fn (SkillCategory $category): Collection => $category->skills->map(fn (Skill $skill): array => [
+            'skills' => $categories->flatMap(fn (SkillCategory $skillCategory): Collection => $skillCategory->skills->map(fn (Skill $skill): array => [
                 'name' => $skill->name,
-                'subtitle' => $skill->getLocalized('subtitle', $lang),
-                'category_slug' => $category->slug,
+                'subtitle' => $skill->getLocalized('subtitle'),
+                'category_slug' => $skillCategory->slug,
                 'accent_color' => $skill->accent_color,
             ]))->values()->all(),
             'career' => $this->resource['career']->map(fn (CareerMilestone $milestone): array => [
-                'period' => $milestone->getLocalized('period', $lang),
-                'role' => $milestone->getLocalized('role', $lang),
+                'period' => $milestone->getLocalized('period'),
+                'role' => $milestone->getLocalized('role'),
                 'company' => $milestone->company,
                 'accent_color_hex' => $milestone->accent_color_hex,
             ])->values()->all(),
