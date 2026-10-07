@@ -25,10 +25,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ContactSubmission::class, ContactSubmissionPolicy::class);
         Gate::policy(SecurityAuditLog::class, AuditLogPolicy::class);
 
-        RateLimiter::for('contact', fn (Request $request): Limit => Limit::perMinutes(10, 3)
-            ->by(app(SecurityAudit::class)->ipHash($request))
-            ->response($this->rateLimitResponse(...)));
-
         RateLimiter::for('login', fn (Request $request): Limit => Limit::perMinute(5)
             ->by(app(SecurityAudit::class)->ipHash($request))
             ->response($this->rateLimitResponse(...)));

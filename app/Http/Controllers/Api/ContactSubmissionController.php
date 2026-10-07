@@ -5,31 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreContactSubmissionRequest;
 use App\Http\Resources\ContactSubmissionResource;
 use App\Models\ContactSubmission;
-use App\Support\SecurityAudit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Enums\SubmissionStatus;
 
 class ContactSubmissionController extends Controller
 {
-    public function store(StoreContactSubmissionRequest $request, SecurityAudit $audit): JsonResponse
-    {
-        ContactSubmission::create([
-            ...$request->safe()->only(['name', 'email', 'subject', 'message']),
-            'uuid' => (string) Str::uuid(),
-            'ip_hash' => $audit->ipHash($request),
-            'user_agent' => $audit->userAgent($request),
-        ]);
-
-        return response()->json(['message' => 'Solicitud recibida.'], 202);
-    }
-
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', ContactSubmission::class);

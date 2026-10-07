@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -27,6 +28,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request): bool => $request->is('api/*') || $request->expectsJson(),
         );
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request): ?JsonResponse {
+            if (!$request->routeIs('api.v1.contact')) {
+                return null;
+            }
+
+            app(SecurityAudit::class)->record($request, SecurityEvent::RateLimitExceeded, SecuritySeverity::Medium);
+
+            return response()->json(['message' => 'Demasiadas solicitudes. Intenta más tarde.'], 429, $exception->getHeaders());
+        });
         $exceptions->render(function (AuthenticationException $exception, Request $request): ?JsonResponse {
             if (!$request->is('api/*')) {
                 return null;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'contact_recipient' => env('PORTFOLIO_CONTACT_RECIPIENT'),
     'locales' => ['es', 'en'],
     'default_locale' => 'es',
     'admin' => [

@@ -8,6 +8,7 @@ use App\Enums\SecurityEvent;
 use App\Enums\UserRole;
 use App\Models\CareerMilestone;
 use App\Models\CaseStudy;
+use App\Models\Contact;
 use App\Models\ContactSubmission;
 use App\Models\ContentBlock;
 use App\Models\Section;
@@ -20,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Validator;
 use Tests\TestCase;
@@ -44,9 +46,11 @@ class PortfolioApiTest extends TestCase
 
     public function test_honeypot_returns_success_without_validating_or_storing_contact_data(): void
     {
+        Mail::fake();
         $this->postJson('/api/v1/contact', ['_hp_company_url' => '<script>secret</script>'])
-            ->assertStatus(202)->assertExactJson(['message' => 'Solicitud recibida.']);
-        $this->assertDatabaseCount('contact_submissions', 0);
+            ->assertCreated()->assertExactJson(['success' => true, 'message' => 'Message processed successfully.']);
+        $this->assertDatabaseCount('contacts', 0);
+        Mail::assertNothingOutgoing();
         $log = SecurityAuditLog::query()->sole();
         $this->assertSame(SecurityEvent::HoneypotTriggered, $log->event_type);
         $this->assertSame('medium', $log->severity->value);
@@ -56,41 +60,42 @@ class PortfolioApiTest extends TestCase
 
     public function test_contact_sanitizes_strings_and_never_accepts_client_owned_status_or_ip(): void
     {
+        Mail::fake();
         $this->withHeader('User-Agent', str_repeat('a', 400))
             ->postJson('/api/v1/contact', [
                 ...$this->contactPayload(),
                 'name' => '  <b>Félix</b>  ',
                 'message' => ' <b>Necesito revisar una arquitectura de producción.</b> ',
                 'status' => 'archived', 'ip_hash' => str_repeat('0', 64),
-            ])->assertStatus(202)->assertExactJson(['message' => 'Solicitud recibida.']);
-        $submission = ContactSubmission::query()->sole();
+            ])->assertCreated()->assertExactJson(['success' => true, 'message' => 'Message processed successfully.']);
+        $submission = Contact::query()->sole();
         $this->assertSame('Félix', $submission->name);
         $this->assertSame('Necesito revisar una arquitectura de producción.', $submission->message);
-        $this->assertSame('new', $submission->status->value);
-        $this->assertSame(hash('sha256', '127.0.0.1'), $submission->ip_hash);
-        $this->assertSame(255, mb_strlen($submission->user_agent));
-        $this->assertTrue(Str::isUuid($submission->uuid));
+        $this->assertSame('unread', $submission->status);
+        $this->assertSame('127.0.0.1', $submission->ip_address);
+        $this->assertSame(400, mb_strlen($submission->user_agent));
     }
 
     public function test_malicious_markup_is_logged_without_copying_the_message(): void
     {
+        Mail::fake();
         $this->postJson('/api/v1/contact', [
             ...$this->contactPayload(),
             'message' => '<script>privateMarker</script> Necesito evaluar la arquitectura.',
-        ])->assertStatus(202);
+        ])->assertCreated();
         $log = SecurityAuditLog::query()->sole();
         $this->assertSame(SecurityEvent::MaliciousInputDetected, $log->event_type);
         $this->assertSame(['message'], $log->context_payload['fields']);
         $this->assertStringNotContainsString('privateMarker', json_encode($log->context_payload));
-        $this->assertStringNotContainsString('<script>', ContactSubmission::query()->sole()->message);
+        $this->assertStringNotContainsString('<script>', Contact::query()->sole()->message);
     }
 
-    public function test_invalid_email_and_short_message_are_rejected_after_sanitization(): void
+    public function test_invalid_email_and_empty_message_are_rejected_after_sanitization(): void
     {
         $this->postJson('/api/v1/contact', [
-            ...$this->contactPayload(), 'email' => 'invalid', 'message' => '<b>corto</b>',
+            ...$this->contactPayload(), 'email' => 'invalid', 'message' => '<b></b>',
         ])->assertUnprocessable()->assertJsonValidationErrors(['email', 'message']);
-        $this->assertDatabaseCount('contact_submissions', 0);
+        $this->assertDatabaseCount('contacts', 0);
     }
 
     public function test_reserved_email_domain_is_rejected_by_dns_validation(): void
@@ -100,19 +105,19 @@ class PortfolioApiTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
-    public function test_rate_limit_is_three_attempts_per_ip_per_ten_minutes(): void
+    public function test_rate_limit_is_five_attempts_per_ip_per_minute(): void
     {
-        for ($attempt = 0; $attempt < 3; $attempt++) {
-            $this->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertStatus(202);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertCreated();
         }
         $this->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])
             ->assertStatus(429)->assertHeader('Retry-After');
         $this->assertDatabaseHas('security_audit_logs', ['event_type' => 'rate_limit_exceeded']);
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
-            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertStatus(202);
-        $this->travel(11)->minutes();
+            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertCreated();
+        $this->travel(61)->seconds();
         $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
-            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertStatus(202);
+            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertCreated();
     }
 
     public function test_admin_endpoints_require_authentication_and_record_failures(): void

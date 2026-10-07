@@ -10,7 +10,7 @@ use App\Support\SecurityAudit;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-class StoreContactSubmissionRequest extends FormRequest
+class StoreContactRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -25,7 +25,7 @@ class StoreContactSubmissionRequest extends FormRequest
         if ($honeypot !== null && $honeypot !== '' && $honeypot !== []) {
             $audit->record($this, SecurityEvent::HoneypotTriggered, SecuritySeverity::Medium, ['_hp_company_url']);
 
-            throw new HttpResponseException(response()->json(['message' => 'Solicitud recibida.'], 202));
+            throw new HttpResponseException(response()->json(['success' => true, 'message' => 'Message processed successfully.'], 201));
         }
 
         $suspiciousFields = [];
@@ -39,30 +39,26 @@ class StoreContactSubmissionRequest extends FormRequest
             $audit->record($this, SecurityEvent::MaliciousInputDetected, SecuritySeverity::High, $suspiciousFields);
         }
 
-        $this->merge($this->sanitize($this->all()));
+        foreach (['name', 'subject', 'message'] as $field) {
+            $value = $this->input($field);
+            if (is_string($value)) {
+                $value = trim(strip_tags($value));
+                if ($field !== 'message') {
+                    $value = preg_replace('/[\r\n]+/', ' ', $value);
+                }
+                $this->merge([$field => $value]);
+            }
+        }
     }
 
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email:rfc,dns', 'max:255'],
-            'subject' => ['nullable', 'string', 'max:255'],
-            'message' => ['required', 'string', 'min:15', 'max:3000'],
-            '_hp_company_url' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email:rfc,dns', 'max:150'],
+            'subject' => ['nullable', 'string', 'max:150'],
+            'message' => ['required', 'string', 'max:3000'],
+            '_hp_company_url' => ['prohibited'],
         ];
-    }
-
-    private function sanitize(array $values): array
-    {
-        foreach ($values as $key => $value) {
-            $values[$key] = match (true) {
-                is_string($value) => trim(strip_tags($value)),
-                is_array($value) => $this->sanitize($value),
-                default => $value,
-            };
-        }
-
-        return $values;
     }
 }

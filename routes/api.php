@@ -10,14 +10,15 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContactSubmissionController;
 use App\Http\Controllers\Api\PortfolioController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::get('portfolio', PortfolioController::class)->name('portfolio');
-    Route::post('contact', [ContactSubmissionController::class, 'store'])
-        ->middleware('throttle:contact')->name('contact');
+    Route::post('contact', [ContactController::class, 'store'])
+        ->middleware('throttle:5,1')->name('contact');
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login')->name('auth.login');
     Route::post('auth/logout', [AuthController::class, 'logout'])
