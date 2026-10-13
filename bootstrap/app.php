@@ -12,6 +12,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Symfony\Component\HttpFoundation\Response;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -23,11 +24,38 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['abilities' => CheckAbilities::class]);
+        $middleware->redirectGuestsTo(
+            fn (Request $request): ?string => $request->is('api', 'api/*') ? null : '/',
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request): bool => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request): bool => $request->is('api', 'api/*') || $request->expectsJson(),
         );
+        $exceptions->respond(function (Response $response, Throwable $exception, Request $request): Response {
+            if (! $request->is('api', 'api/*')) {
+                return $response;
+            }
+
+            $status = $response->getStatusCode();
+            $message = match ($status) {
+                404 => 'Resource not found',
+                405 => 'Method not allowed',
+                default => $status >= 500 ? 'Server error' : null,
+            };
+            if ($message === null) {
+                return $response;
+            }
+
+            $headers = [];
+            foreach (['Allow', 'Retry-After'] as $header) {
+                if ($response->headers->has($header)) {
+                    $headers[$header] = $response->headers->get($header);
+                }
+            }
+
+            return response()->json(['message' => $message], $status, $headers);
+        });
         $exceptions->render(function (ThrottleRequestsException $exception, Request $request): ?JsonResponse {
             if (!$request->routeIs('api.v1.contact')) {
                 return null;
@@ -38,7 +66,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json(['message' => 'Demasiadas solicitudes. Intenta más tarde.'], 429, $exception->getHeaders());
         });
         $exceptions->render(function (AuthenticationException $exception, Request $request): ?JsonResponse {
-            if (!$request->is('api/*')) {
+            if (!$request->is('api', 'api/*')) {
                 return null;
             }
 

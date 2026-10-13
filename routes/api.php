@@ -4,6 +4,7 @@
  * Félix Saucedo — Senior Software Engineer & Technical Lead
  * Architecture & High-Throughput Core Engineering
  * GitHub: [https://github.com/FelixSaucedo](https://github.com/FelixSaucedo)
+ * Site: [felixsaucedo.com](https://felixsaucedo.com/)
  */
 
 declare(strict_types=1);
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::get('portfolio', PortfolioController::class)->name('portfolio');
     Route::post('contact', [ContactController::class, 'store'])
-        ->middleware('throttle:5,1')->name('contact');
+        ->middleware('throttle:contact')->name('contact');
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login')->name('auth.login');
     Route::post('auth/logout', [AuthController::class, 'logout'])

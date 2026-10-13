@@ -6,10 +6,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ContactSubmissionResource;
+use App\Models\Contact;
 use App\Models\ContactSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Enums\SubmissionStatus;
 
@@ -42,7 +44,12 @@ class ContactSubmissionController extends Controller
     public function destroy(ContactSubmission $submission): JsonResponse
     {
         Gate::authorize('delete', $submission);
-        $submission->delete();
+        DB::transaction(function () use ($submission): void {
+            if ($submission->contact_id !== null) {
+                Contact::query()->whereKey($submission->contact_id)->delete();
+            }
+            $submission->delete();
+        });
 
         return response()->json(null, 204);
     }

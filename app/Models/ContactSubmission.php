@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContactSubmission extends Model
 {
-    protected $fillable = ['uuid', 'name', 'email', 'subject', 'message', 'ip_hash', 'user_agent', 'status'];
+    protected $fillable = ['contact_id', 'uuid', 'name', 'email', 'subject', 'message', 'ip_hash', 'user_agent', 'status'];
 
     protected function casts(): array
     {

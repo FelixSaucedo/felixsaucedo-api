@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'routes' => false,
     'stateful' => [],
     'guard' => [],
     'expiration' => 60,

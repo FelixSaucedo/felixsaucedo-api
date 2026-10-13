@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'contact_recipient' => env('PORTFOLIO_CONTACT_RECIPIENT'),
+    'contact_recipient' => env('PORTFOLIO_CONTACT_RECIPIENT', 'contacto@felixsaucedo.com'),
     'locales' => ['es', 'en'],
     'default_locale' => 'es',
     'admin' => [

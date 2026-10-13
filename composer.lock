@@ -108,8 +108,7 @@
             ],
             "authors": [
                 {
-                    "name": "KyleKatarn",
-                    "email": "kylekatarnls@gmail.com"
+                    "name": "KyleKatarn"
                 }
             ],
             "description": "Types to use Carbon in Doctrine",
@@ -197,7 +196,6 @@
                 },
                 {
                     "name": "Colin O'Dell",
-                    "email": "colinodell@gmail.com",
                     "homepage": "https://www.colinodell.com"
                 }
             ],
@@ -251,8 +249,7 @@
             ],
             "authors": [
                 {
-                    "name": "Guilherme Blanco",
-                    "email": "guilhermeblanco@gmail.com"
+                    "name": "Guilherme Blanco"
                 },
                 {
                     "name": "Roman Borschel",
@@ -263,12 +260,10 @@
                     "email": "kontakt@beberlei.de"
                 },
                 {
-                    "name": "Jonathan Wage",
-                    "email": "jonwage@gmail.com"
+                    "name": "Jonathan Wage"
                 },
                 {
-                    "name": "Johannes Schmitt",
-                    "email": "schmittjoh@gmail.com"
+                    "name": "Johannes Schmitt"
                 }
             ],
             "description": "PHP Doctrine Inflector is a small library that can perform string manipulations with regard to upper/lowercase and singular/plural forms of words.",
@@ -339,16 +334,14 @@
             ],
             "authors": [
                 {
-                    "name": "Guilherme Blanco",
-                    "email": "guilhermeblanco@gmail.com"
+                    "name": "Guilherme Blanco"
                 },
                 {
                     "name": "Roman Borschel",
                     "email": "roman@code-factory.org"
                 },
                 {
-                    "name": "Johannes Schmitt",
-                    "email": "schmittjoh@gmail.com"
+                    "name": "Johannes Schmitt"
                 }
             ],
             "description": "PHP Doctrine Lexer parser library that can be used in Top-Down, Recursive Descent Parsers.",
@@ -555,8 +548,7 @@
                     "homepage": "https://fruitcake.nl"
                 },
                 {
-                    "name": "Barryvdh",
-                    "email": "barryvdh@gmail.com"
+                    "name": "Barryvdh"
                 }
             ],
             "description": "Cross-origin resource sharing library for the Symfony HttpFoundation",
@@ -709,27 +701,22 @@
                 },
                 {
                     "name": "Michael Dowling",
-                    "email": "mtdowling@gmail.com",
                     "homepage": "https://github.com/mtdowling"
                 },
                 {
                     "name": "Jeremy Lindblom",
-                    "email": "jeremeamia@gmail.com",
                     "homepage": "https://github.com/jeremeamia"
                 },
                 {
                     "name": "George Mponos",
-                    "email": "gmponos@gmail.com",
                     "homepage": "https://github.com/gmponos"
                 },
                 {
                     "name": "Tobias Nyholm",
-                    "email": "tobias.nyholm@gmail.com",
                     "homepage": "https://github.com/Nyholm"
                 },
                 {
                     "name": "Márk Sági-Kazár",
-                    "email": "mark.sagikazar@gmail.com",
                     "homepage": "https://github.com/sagikazarmark"
                 },
                 {
@@ -815,12 +802,10 @@
                 },
                 {
                     "name": "Michael Dowling",
-                    "email": "mtdowling@gmail.com",
                     "homepage": "https://github.com/mtdowling"
                 },
                 {
                     "name": "Tobias Nyholm",
-                    "email": "tobias.nyholm@gmail.com",
                     "homepage": "https://github.com/Nyholm"
                 },
                 {
@@ -912,22 +897,18 @@
                 },
                 {
                     "name": "Michael Dowling",
-                    "email": "mtdowling@gmail.com",
                     "homepage": "https://github.com/mtdowling"
                 },
                 {
                     "name": "George Mponos",
-                    "email": "gmponos@gmail.com",
                     "homepage": "https://github.com/gmponos"
                 },
                 {
                     "name": "Tobias Nyholm",
-                    "email": "tobias.nyholm@gmail.com",
                     "homepage": "https://github.com/Nyholm"
                 },
                 {
                     "name": "Márk Sági-Kazár",
-                    "email": "mark.sagikazar@gmail.com",
                     "homepage": "https://github.com/sagikazarmark"
                 },
                 {
@@ -937,7 +918,6 @@
                 },
                 {
                     "name": "Márk Sági-Kazár",
-                    "email": "mark.sagikazar@gmail.com",
                     "homepage": "https://sagikazarmark.hu"
                 }
             ],
@@ -1019,17 +999,14 @@
                 },
                 {
                     "name": "Michael Dowling",
-                    "email": "mtdowling@gmail.com",
                     "homepage": "https://github.com/mtdowling"
                 },
                 {
                     "name": "George Mponos",
-                    "email": "gmponos@gmail.com",
                     "homepage": "https://github.com/gmponos"
                 },
                 {
                     "name": "Tobias Nyholm",
-                    "email": "tobias.nyholm@gmail.com",
                     "homepage": "https://github.com/Nyholm"
                 }
             ],
@@ -1604,7 +1581,6 @@
             "authors": [
                 {
                     "name": "Colin O'Dell",
-                    "email": "colinodell@gmail.com",
                     "homepage": "https://www.colinodell.com",
                     "role": "Lead Developer"
                 }
@@ -1692,7 +1668,6 @@
             "authors": [
                 {
                     "name": "Colin O'Dell",
-                    "email": "colinodell@gmail.com",
                     "homepage": "https://www.colinodell.com",
                     "role": "Lead Developer"
                 }
@@ -1972,7 +1947,6 @@
             "authors": [
                 {
                     "name": "Ignace Nyamagana Butera",
-                    "email": "nyamsprod@gmail.com",
                     "homepage": "https://nyamsprod.com"
                 }
             ],
@@ -2061,7 +2035,6 @@
             "authors": [
                 {
                     "name": "Ignace Nyamagana Butera",
-                    "email": "nyamsprod@gmail.com",
                     "homepage": "https://nyamsprod.com"
                 }
             ],
@@ -2579,8 +2552,7 @@
             ],
             "authors": [
                 {
-                    "name": "Nuno Maduro",
-                    "email": "enunomaduro@gmail.com"
+                    "name": "Nuno Maduro"
                 }
             ],
             "description": "It's like Tailwind CSS, but for the console.",
@@ -2655,7 +2627,6 @@
             "authors": [
                 {
                     "name": "Johannes M. Schmitt",
-                    "email": "schmittjoh@gmail.com",
                     "homepage": "https://github.com/schmittjoh"
                 },
                 {
@@ -4355,8 +4326,7 @@
             ],
             "authors": [
                 {
-                    "name": "Gert de Pagter",
-                    "email": "BackEndTea@gmail.com"
+                    "name": "Gert de Pagter"
                 },
                 {
                     "name": "Symfony Community",
@@ -4774,8 +4744,7 @@
             ],
             "authors": [
                 {
-                    "name": "Ion Bazan",
-                    "email": "ion.bazan@gmail.com"
+                    "name": "Ion Bazan"
                 },
                 {
                     "name": "Nicolas Grekas",
@@ -6146,7 +6115,6 @@
                 },
                 {
                     "name": "Rob Bast",
-                    "email": "rob.bast@gmail.com",
                     "homepage": "http://robbast.nl"
                 }
             ],
@@ -6626,8 +6594,7 @@
                     "email": "taylor@laravel.com"
                 },
                 {
-                    "name": "Nuno Maduro",
-                    "email": "enunomaduro@gmail.com"
+                    "name": "Nuno Maduro"
                 }
             ],
             "description": "Easily delve into your Laravel application's log files directly from the command line.",
@@ -6780,8 +6747,7 @@
             ],
             "authors": [
                 {
-                    "name": "Nuno Maduro",
-                    "email": "enunomaduro@gmail.com"
+                    "name": "Nuno Maduro"
                 }
             ],
             "description": "An opinionated code formatter for PHP.",
@@ -6904,7 +6870,6 @@
             "authors": [
                 {
                     "name": "Pádraic Brady",
-                    "email": "padraic.brady@gmail.com",
                     "homepage": "https://github.com/padraic",
                     "role": "Author"
                 },
@@ -7062,8 +7027,7 @@
             ],
             "authors": [
                 {
-                    "name": "Nuno Maduro",
-                    "email": "enunomaduro@gmail.com"
+                    "name": "Nuno Maduro"
                 }
             ],
             "description": "Cli error handling for console/command-line PHP applications.",
@@ -7770,8 +7734,7 @@
                     "email": "sebastian@phpunit.de"
                 },
                 {
-                    "name": "Jeff Welch",
-                    "email": "whatthejeff@gmail.com"
+                    "name": "Jeff Welch"
                 },
                 {
                     "name": "Volker Dusch",
@@ -8070,8 +8033,7 @@
                     "email": "sebastian@phpunit.de"
                 },
                 {
-                    "name": "Jeff Welch",
-                    "email": "whatthejeff@gmail.com"
+                    "name": "Jeff Welch"
                 },
                 {
                     "name": "Volker Dusch",
@@ -8082,8 +8044,7 @@
                     "email": "aharvey@php.net"
                 },
                 {
-                    "name": "Bernhard Schussek",
-                    "email": "bschussek@gmail.com"
+                    "name": "Bernhard Schussek"
                 }
             ],
             "description": "Provides the functionality to export PHP variables for visualization",
@@ -8416,8 +8377,7 @@
                     "email": "sebastian@phpunit.de"
                 },
                 {
-                    "name": "Jeff Welch",
-                    "email": "whatthejeff@gmail.com"
+                    "name": "Jeff Welch"
                 },
                 {
                     "name": "Adam Harvey",

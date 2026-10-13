@@ -32,13 +32,17 @@ class UserAcknowledgmentMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $subject = ($this->contact->locale ?? 'es') === 'en'
+            ? 'Message received — Felix Saucedo'
+            : 'Mensaje recibido — Félix Saucedo';
+
         return new Envelope(
-            subject: 'Gracias por ponerte en contacto — Félix Saucedo',
+            subject: $subject,
         );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'emails.user_acknowledgment');
+        return new Content(view: 'emails.user_acknowledgment', with: ['contact' => $this->contact]);
     }
 }

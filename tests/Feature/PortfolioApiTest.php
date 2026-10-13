@@ -44,11 +44,11 @@ class PortfolioApiTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_honeypot_returns_success_without_validating_or_storing_contact_data(): void
+    public function test_honeypot_returns_422_without_storing_contact_data(): void
     {
         Mail::fake();
         $this->postJson('/api/v1/contact', ['_hp_company_url' => '<script>secret</script>'])
-            ->assertCreated()->assertExactJson(['success' => true, 'message' => 'Message processed successfully.']);
+            ->assertUnprocessable()->assertJsonValidationErrors('_hp_company_url');
         $this->assertDatabaseCount('contacts', 0);
         Mail::assertNothingOutgoing();
         $log = SecurityAuditLog::query()->sole();
@@ -73,7 +73,7 @@ class PortfolioApiTest extends TestCase
         $this->assertSame('Necesito revisar una arquitectura de producción.', $submission->message);
         $this->assertSame('unread', $submission->status);
         $this->assertSame('127.0.0.1', $submission->ip_address);
-        $this->assertSame(400, mb_strlen($submission->user_agent));
+        $this->assertSame(255, mb_strlen($submission->user_agent));
     }
 
     public function test_malicious_markup_is_logged_without_copying_the_message(): void
@@ -108,16 +108,16 @@ class PortfolioApiTest extends TestCase
     public function test_rate_limit_is_five_attempts_per_ip_per_minute(): void
     {
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertCreated();
+            $this->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertUnprocessable();
         }
         $this->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])
             ->assertStatus(429)->assertHeader('Retry-After');
         $this->assertDatabaseHas('security_audit_logs', ['event_type' => 'rate_limit_exceeded']);
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
-            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertCreated();
+            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertUnprocessable();
         $this->travel(61)->seconds();
         $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
-            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertCreated();
+            ->postJson('/api/v1/contact', ['_hp_company_url' => 'bot'])->assertUnprocessable();
     }
 
     public function test_admin_endpoints_require_authentication_and_record_failures(): void

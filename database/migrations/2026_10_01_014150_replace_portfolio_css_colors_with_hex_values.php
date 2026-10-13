@@ -60,7 +60,7 @@ return new class () extends Migration {
     }
 
     /**
-     * Restore equivalent colors with arbitrary Tailwind classes; original class names cannot be reconstructed.
+     * Original Tailwind classes are unavailable; rollback recreates equivalent colors.
      */
     public function down(): void
     {

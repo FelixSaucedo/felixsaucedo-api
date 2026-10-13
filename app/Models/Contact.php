@@ -13,9 +13,14 @@ class Contact extends Model
     /** @use HasFactory<ContactFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'email', 'subject', 'message', 'ip_address', 'user_agent'];
+    protected $fillable = ['name', 'email', 'subject', 'message', 'locale', 'theme', 'ip_address', 'user_agent'];
 
     protected $attributes = ['status' => 'unread'];
 
     protected $hidden = ['ip_address', 'user_agent'];
+
+    protected function casts(): array
+    {
+        return ['mail_queued_at' => 'datetime'];
+    }
 }

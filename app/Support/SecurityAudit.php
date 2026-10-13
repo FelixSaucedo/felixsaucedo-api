@@ -8,7 +8,10 @@ use App\Enums\SecurityEvent;
 use App\Enums\SecuritySeverity;
 use App\Models\SecurityAuditLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class SecurityAudit
 {
@@ -23,16 +26,23 @@ class SecurityAudit
             $fields,
         ));
 
-        SecurityAuditLog::create([
-            'event_type' => $event,
-            'severity' => $severity,
-            'ip_hash' => $this->ipHash($request),
-            'user_agent' => $this->userAgent($request),
-            'context_payload' => [
-                'route' => $request->route()?->getName(),
-                'fields' => $allowedFields,
-            ],
-        ]);
+        try {
+            DB::transaction(fn () => SecurityAuditLog::create([
+                'event_type' => $event,
+                'severity' => $severity,
+                'ip_hash' => $this->ipHash($request),
+                'user_agent' => $this->userAgent($request),
+                'context_payload' => [
+                    'route' => $request->route()?->getName(),
+                    'fields' => $allowedFields,
+                ],
+            ]));
+        } catch (Throwable $exception) {
+            Log::warning('Security audit persistence unavailable.', [
+                'event_type' => $event->value,
+                'exception_type' => $exception::class,
+            ]);
+        }
     }
 
     public function ipHash(Request $request): string

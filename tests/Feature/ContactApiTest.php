@@ -59,10 +59,10 @@ class ContactApiTest extends TestCase
         $this->assertSame('Contact Test Client', $contact->user_agent);
         Mail::assertQueued(AdminNotificationMail::class, fn (AdminNotificationMail $mail): bool =>
             $mail->hasTo('admin@company.com') && $mail->contact->is($contact)
-            && $mail->envelope()->subject === '[Nuevo Contacto Portafolio]: Consulta técnica');
+            && $mail->envelope()->subject === '[Portafolio] Consulta técnica');
         Mail::assertQueued(UserAcknowledgmentMail::class, fn (UserAcknowledgmentMail $mail): bool =>
             $mail->hasTo('ana@company.com') && $mail->contact->is($contact)
-            && $mail->envelope()->subject === 'Gracias por ponerte en contacto — Félix Saucedo');
+            && $mail->envelope()->subject === 'Mensaje recibido — Félix Saucedo');
         Mail::assertQueuedCount(2);
         Mail::assertNothingSent();
     }
@@ -94,7 +94,7 @@ class ContactApiTest extends TestCase
 
         $this->assertNull(Contact::query()->sole()->subject);
         Mail::assertQueued(AdminNotificationMail::class, fn (AdminNotificationMail $mail): bool =>
-            $mail->hasTo('contacto@company.com') && $mail->envelope()->subject === '[Nuevo Contacto Portafolio]: Consulta General');
+            $mail->hasTo('contacto@company.com') && $mail->envelope()->subject === '[Portafolio] Nuevo contacto de Ana');
     }
 
     #[DataProvider('invalidContactFields')]
@@ -123,6 +123,8 @@ class ContactApiTest extends TestCase
             'empty sanitized message' => ['message', '<p></p>'],
             'long message' => ['message', str_repeat('a', 3001)],
             'array message' => ['message', ['Consulta']],
+            'unsupported locale' => ['locale', 'fr'],
+            'array locale' => ['locale', ['en']],
         ];
     }
 
@@ -156,22 +158,35 @@ class ContactApiTest extends TestCase
         $this->assertCount(2, Mail::mailer()->getSymfonyTransport()->messages());
     }
 
-    public function test_queue_failure_rolls_back_contact_and_the_first_queued_message(): void
+    public function test_queue_failure_preserves_contact_and_recovers_without_partial_or_duplicate_mail(): void
     {
-        // Fail the second enqueue after the first succeeds to verify the complete transaction rollback.
+        // Reject the second job to verify pending dispatch recovery without duplicating the first job.
         DB::unprepared("CREATE TRIGGER reject_second_mail BEFORE INSERT ON jobs WHEN (SELECT COUNT(*) FROM jobs) >= 1 BEGIN SELECT RAISE(FAIL, 'Queue unavailable'); END");
 
-        $this->postJson('/api/v1/contact', $this->contactDetails())->assertStatus(500);
+        $this->postJson('/api/v1/contact', $this->contactDetails())->assertAccepted()->assertExactJson([
+            'success' => true,
+            'message' => 'Message saved. Email notifications are pending.',
+            'notification_status' => 'pending',
+        ]);
 
-        $this->assertDatabaseCount('contacts', 0);
+        $this->assertDatabaseCount('contacts', 1);
+        $this->assertDatabaseCount('contact_submissions', 1);
+        $this->assertNull(Contact::query()->sole()->mail_queued_at);
         $this->assertDatabaseCount('jobs', 0);
+
+        DB::unprepared('DROP TRIGGER reject_second_mail');
+        $this->artisan('contacts:dispatch-pending')->assertSuccessful();
+        $this->assertNotNull(Contact::query()->sole()->mail_queued_at);
+        $this->assertDatabaseCount('jobs', 2);
+        $this->artisan('contacts:dispatch-pending')->assertSuccessful();
+        $this->assertDatabaseCount('jobs', 2);
     }
 
     public function test_admin_delivery_failure_does_not_block_acknowledgment_and_is_retried(): void
     {
         $this->postJson('/api/v1/contact', $this->contactDetails())->assertCreated();
         Event::listen(MessageSending::class, function (MessageSending $event): void {
-            if (str_starts_with($event->message->getSubject(), '[Nuevo Contacto Portafolio]')) {
+            if (str_starts_with($event->message->getSubject(), '[Portafolio]')) {
                 throw new RuntimeException('Simulated SMTP failure');
             }
         });
@@ -181,12 +196,12 @@ class ContactApiTest extends TestCase
         $this->assertDatabaseCount('contacts', 1);
         $this->assertDatabaseCount('jobs', 1);
         $this->assertDatabaseCount('failed_jobs', 0);
-        $remainingMail = DB::table('jobs')->sole();
-        $this->assertSame(1, $remainingMail->attempts);
-        $this->assertGreaterThan(time(), $remainingMail->available_at);
+        $queuedMessage = DB::table('jobs')->sole();
+        $this->assertSame(1, $queuedMessage->attempts);
+        $this->assertGreaterThan(time(), $queuedMessage->available_at);
         $messages = Mail::mailer()->getSymfonyTransport()->messages();
         $this->assertCount(1, $messages);
-        $this->assertSame('Gracias por ponerte en contacto — Félix Saucedo', $messages->first()->getOriginalMessage()->getSubject());
+        $this->assertSame('Mensaje recibido — Félix Saucedo', $messages->first()->getOriginalMessage()->getSubject());
 
         Event::forget(MessageSending::class);
         $this->travel(61)->seconds();
@@ -207,6 +222,89 @@ class ContactApiTest extends TestCase
             ->assertDontSeeInHtml('<script>', escape: false)->assertDontSeeInHtml('<img', escape: false);
         (new UserAcknowledgmentMail($contact))->assertSeeInHtml('&lt;script&gt;alert(1)&lt;/script&gt;', escape: false)
             ->assertDontSeeInHtml('<script>', escape: false);
+    }
+
+    #[DataProvider('acknowledgmentLanguages')]
+    public function test_acknowledgment_renders_the_selected_language_after_queue_delivery(?string $locale, ?string $theme, string $cardColor, string $subject, string $greeting, string $fallbackSubject, string $adminTitle): void
+    {
+        $this->postJson('/api/v1/contact', [...$this->contactDetails(), 'locale' => $locale, 'theme' => $theme])->assertCreated();
+
+        $contact = Contact::query()->sole();
+        $this->assertSame($locale, $contact->locale);
+        $this->assertSame($theme, $contact->theme);
+        $this->artisan('queue:work', ['connection' => 'contact-mail', '--queue' => 'contacts', '--stop-when-empty' => true])->assertSuccessful();
+
+        $messages = Mail::mailer()->getSymfonyTransport()->messages();
+        $this->assertCount(2, $messages);
+        $acknowledgment = $messages->last()->getOriginalMessage();
+        $this->assertSame($subject, $acknowledgment->getSubject());
+        $this->assertStringContainsString($greeting, $acknowledgment->getHtmlBody());
+        $this->assertStringContainsString($fallbackSubject, $acknowledgment->getHtmlBody());
+        $this->assertStringContainsString('bgcolor="'.$cardColor.'"', $acknowledgment->getHtmlBody());
+        $this->assertStringContainsString('href="https://felixsaucedo.com"', $acknowledgment->getHtmlBody());
+
+        $admin = $messages->first()->getOriginalMessage();
+        $this->assertStringContainsString($adminTitle, $admin->getHtmlBody());
+        $this->assertStringContainsString('bgcolor="'.$cardColor.'"', $admin->getHtmlBody());
+        $this->assertStringContainsString('mailto:ana@company.com?subject=Re%3A%20', $admin->getHtmlBody());
+    }
+
+    public static function acknowledgmentLanguages(): array
+    {
+        return [
+            'English dark' => ['en', 'dark', '#080d15', 'Message received — Felix Saucedo', 'Hello Ana,', 'General Inquiry', 'New message received'],
+            'English light' => ['en', 'light', '#ffffff', 'Message received — Felix Saucedo', 'Hello Ana,', 'General Inquiry', 'New message received'],
+            'Spanish dark' => ['es', 'dark', '#080d15', 'Mensaje recibido — Félix Saucedo', 'Hola Ana,', 'Consulta General', 'Nuevo mensaje recibido'],
+            'Spanish light' => ['es', 'light', '#ffffff', 'Mensaje recibido — Félix Saucedo', 'Hola Ana,', 'Consulta General', 'Nuevo mensaje recibido'],
+            'default Spanish and adaptive theme' => [null, null, '#ffffff', 'Mensaje recibido — Félix Saucedo', 'Hola Ana,', 'Consulta General', 'Nuevo mensaje recibido'],
+        ];
+    }
+
+    public function test_email_without_a_site_theme_supports_client_dark_mode(): void
+    {
+        $contact = Contact::factory()->make(['theme' => null]);
+
+        (new UserAcknowledgmentMail($contact))->assertSeeInHtml('@media (prefers-color-scheme: dark)', escape: false)
+            ->assertSeeInHtml('[data-ogsc] .card-box', escape: false);
+    }
+
+    public function test_admin_reply_link_encodes_special_characters_in_the_subject(): void
+    {
+        $contact = Contact::factory()->make(['email' => 'ana@company.com', 'subject' => 'Diseño & API?']);
+
+        (new AdminNotificationMail($contact))->assertSeeInHtml('mailto:ana@company.com?subject=Re%3A%20Dise%C3%B1o%20%26%20API%3F', escape: false);
+    }
+
+    #[DataProvider('selectedContactReasons')]
+    public function test_selected_contact_reason_is_preserved_in_both_emails(string $locale, string $reason): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/v1/contact', [
+            ...$this->contactDetails(),
+            'locale' => $locale,
+            'subject' => $reason,
+        ])->assertCreated();
+
+        $contact = Contact::query()->sole();
+        $this->assertSame($reason, $contact->subject);
+        Mail::assertQueued(AdminNotificationMail::class, fn (AdminNotificationMail $mail): bool =>
+            $mail->envelope()->subject === '[Portafolio] '.$reason);
+        Mail::assertQueued(UserAcknowledgmentMail::class);
+        (new AdminNotificationMail($contact))->assertSeeInHtml($reason);
+        (new UserAcknowledgmentMail($contact))->assertSeeInHtml($reason);
+    }
+
+    public static function selectedContactReasons(): array
+    {
+        return [
+            'Spanish job' => ['es', 'Oportunidad laboral (Senior / Lead Hands-on)'],
+            'Spanish consulting' => ['es', 'Consultoría o desarrollo técnico'],
+            'Spanish technical chat' => ['es', 'Conversación técnica / Pregunta sobre mi trabajo'],
+            'English job' => ['en', 'Job Opportunity (Senior / Hands-on Lead)'],
+            'English consulting' => ['en', 'Consulting or Technical Development'],
+            'English technical chat' => ['en', 'Technical Chat / Question about my work'],
+        ];
     }
 
     private function contactDetails(): array

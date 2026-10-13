@@ -1,113 +1,124 @@
 # felixsaucedo-api
 
-Uso esta API como motor de contenido headless y como punto de entrada transaccional para los contactos del portafolio. MySQL es la fuente de verdad de la experiencia profesional, los textos en español e inglés y los colores de acento. La interfaz consume contenido resuelto, sin reconstruir la trayectoria a partir de configuración de despliegue.
+Uso Laravel 13, PHP 8.4 y MySQL 8.4 para servir el contenido de mi portafolio y recibir contactos. Guardo los textos ES/EN y los colores en MySQL; Eloquent y Resources resuelven la respuesta que consume Vue.
 
-El servicio está construido con Laravel 13 y PHP 8.4. El código propio utiliza `declare(strict_types=1)`, tipos de entrada y retorno, modelos Eloquent y Resources. Mantengo las consultas en el controlador y la transformación del contrato en [`PortfolioResource`](app/Http/Resources/PortfolioResource.php), para que la serialización no introduzca consultas ocultas.
+Separé la persistencia del contacto del despacho de correo para conservar el mensaje cuando falla la cola o SMTP.
 
-## Contenido y presentación: una frontera deliberada
+## Entorno
 
-Las traducciones se guardan como JSON por campo, con claves `es` y `en`. El Resource selecciona el idioma solicitado; el modelo permite recurrir a una traducción disponible cuando falta la elegida. El controlador carga relaciones anticipadamente y ordena por `order` e `id`, de modo que la UI no tenga que inferir jerarquía ni orden editorial.
+Normalmente ejecuto la API junto a la UI desde [portfolio-workspace](https://github.com/FelixSaucedo/portfolio-workspace). Reservo `.env` para configuración y secretos; mi trayectoria y los textos del sitio viven en la base de datos. En [`.env.example`](.env.example) dejé las variables que necesito preparar:
 
-| Tabla | Decisión que representa |
+| Variables | Uso |
 | --- | --- |
-| `sections`, `content_blocks` | Hero, filosofía y liderazgo; las secciones pueden desactivarse. |
-| `skill_categories`, `skills` | Taxonomía configurable y matriz de tecnologías. |
-| `case_studies` | Dilema técnico, decisión y etiqueta de tecnologías. |
-| `career_milestones` | Período, rol y empresa; el período también es bilingüe. |
-| `contact_submissions` | Contactos recibidos, identificados públicamente por UUID. |
-| `security_audit_logs` | Eventos de abuso, autenticación y límite de solicitudes. |
+| `APP_KEY`, `APP_ENV`, `APP_DEBUG`, `APP_URL` | Aplicación; conserva la clave y desactiva debug en producción. |
+| `DB_*` | Conexión MySQL. |
+| `PORTFOLIO_ADMIN_NAME`, `PORTFOLIO_ADMIN_EMAIL`, `PORTFOLIO_ADMIN_PASSWORD` | Administrador inicial; contraseña de al menos 16 caracteres. |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Credenciales SMTP2GO. |
+| `MAIL_FROM_ADDRESS`, `PORTFOLIO_CONTACT_RECIPIENT` | `contacto@felixsaucedo.com`. |
 
-Elegí colores `#RRGGBB` en columnas de longitud siete, en lugar de clases Tailwind. `accent_color`, `default_accent_color`, `badge_color_hex` y `accent_color_hex` describen el valor visual sin imponer una herramienta de CSS. Un cambio de framework en el cliente no requiere migrar nombres de utilidades en la base de datos. El cliente sigue siendo responsable del contraste, los fondos, la opacidad y el comportamiento hover.
+Configuré el correo con SMTP2GO en `mail.smtp2go.com:2525`, usando `MAIL_SCHEME=smtp` y `MAIL_ENCRYPTION=tls`.
 
-Las migraciones conservan la evolución desde el esquema anterior y convierten los colores existentes antes de retirar sus columnas CSS. El [`PortfolioSeeder`](database/seeders/PortfolioSeeder.php) carga cinco categorías, 33 tecnologías, cuatro filosofías, dos casos, tres bloques de liderazgo y tres hitos. Usa una transacción y `updateOrCreate`: repetirlo no duplica estos registros, pero sí vuelve a aplicar sus textos y valores. No es un mecanismo de edición ni elimina automáticamente contenido ajeno al conjunto sembrado.
-
-## Configuración y administrador inicial
-
-Reservo `.env` para configuración de ejecución y secretos: aplicación, base de datos y credenciales. Empresas, períodos y ubicaciones pertenecen al modelo de contenido. [`config/portfolio.php`](config/portfolio.php) no lee variables laborales.
-
-Dentro del prefijo `PORTFOLIO_*`, las únicas variables del entorno de la API son:
-
-```dotenv
-PORTFOLIO_ADMIN_NAME="Félix Saucedo"
-PORTFOLIO_ADMIN_EMAIL=correo-del-administrador
-PORTFOLIO_ADMIN_PASSWORD=contraseña-propia-del-entorno
-```
-
-El seeder valida un email correcto y una contraseña de al menos 16 caracteres. Si ambas credenciales faltan, carga el contenido y avisa que no creó administrador. Si el usuario ya existe, conserva su contraseña; cambiar `.env` y repetir el seeder no la rota. Los valores de ejemplo son para preparar el entorno local, no para publicar una cuenta compartida.
-
-## Seguridad sin fricción en el formulario
-
-El contacto no exige un CAPTCHA visual. La primera barrera es `_hp_company_url`: un campo que debe llegar vacío. Si se completa, la API registra el evento y devuelve el mismo `202` que a una solicitud válida, sin guardar el contacto.
-
-El límite es de tres intentos por IP en diez minutos, incluidos los intentos descartados por honeypot. Después, responde `429` con `Retry-After`. La validación elimina etiquetas y espacios, verifica el email mediante RFC y DNS, y persiste únicamente los campos permitidos. Estado, UUID y metadatos de origen se asignan en el servidor.
-
-La auditoría guarda tipo de evento, severidad, hash SHA-256 de la IP y nombres de campos implicados; no copia contraseñas ni el cuerpo del mensaje al contexto del evento. Ese hash es un identificador estable, no una garantía de anonimización. Honeypot y rate limiting reducen abuso básico; no sustituyen una defensa contra ataques distribuidos.
-
-Sanctum protege la lectura administrativa de contactos y auditoría. Los tokens expiran a los 60 minutos y requieren abilities; las policies comprueban además el rol `super_admin`. No hay un panel de administración ni endpoints para editar el contenido en esta implementación.
-
-## Contratos públicos
-
-### `GET /api/v1/portfolio?lang=es`
-
-Acepta `es` o `en`; sin parámetro utiliza `es`. Un idioma no admitido devuelve `422`. La respuesta `200` es un objeto directo, sin envoltorio `data`.
-
-| Clave | Campos de cada objeto |
-| --- | --- |
-| `hero` | `title`, `body`, `badge`; puede ser `null`. |
-| `philosophies` | `icon`, `accent_color_hex`, `title`, `body`. |
-| `case_studies` | `title`, `badge_text`, `badge_color_hex`, `problem`, `solution`. |
-| `leadership` | `title`, `body`. |
-| `categories` | `id`, `slug`, `name`, `default_accent_color`. |
-| `skills` | `name`, `subtitle`, `category_slug`, `accent_color`. |
-| `career` | `period`, `role`, `company`, `accent_color_hex`. |
-
-Todas las claves salvo `hero` son colecciones. Los textos traducibles llegan resueltos como strings o `null`, no como diccionarios de traducción. Desactivar una sección excluye sus bloques de la respuesta.
-
-### `POST /api/v1/contact`
-
-Envía `Accept: application/json` y `Content-Type: application/json`.
-
-| Campo | Restricción |
-| --- | --- |
-| `name` | Obligatorio, hasta 100 caracteres. |
-| `email` | Obligatorio, email con validación DNS, hasta 255 caracteres. |
-| `subject` | Opcional, hasta 255 caracteres. |
-| `message` | Obligatorio, entre 15 y 3000 caracteres después de sanitizar. |
-| `_hp_company_url` | Vacío para solicitudes legítimas. |
-
-La recepción válida devuelve `202` con `{"message":"Solicitud recibida."}`. La validación devuelve `422` y un objeto `errors`; el límite devuelve `429`. El endpoint guarda el contacto para revisión posterior: no envía un correo ni ejecuta una notificación asíncrona. Por el diseño del honeypot, un `202` tampoco prueba que se haya almacenado un mensaje.
-
-Las rutas adicionales están en [`routes/api.php`](routes/api.php): login/logout y lectura o eliminación administrativa de contactos, además de consulta de auditoría.
-
-## Desarrollo con Docker
-
-Con el workspace completo, usa sus instrucciones de inicialización. Para ejecutar únicamente este repositorio, desde su raíz:
+Para ejecutar la API por separado:
 
 ```bash
 cp .env.example .env
-# Configura PORTFOLIO_ADMIN_* antes de sembrar.
+# Configura administrador y correo antes de continuar.
 docker compose up -d --build
-```
-
-Espera a que PHP-FPM esté disponible en los logs. Después:
-
-```bash
 docker compose exec api php artisan key:generate --no-interaction
-docker compose exec api php artisan migrate:fresh --seed --no-interaction
+docker compose exec api php artisan migrate --no-interaction
+docker compose exec api php artisan db:seed --no-interaction
 ```
 
-La API autónoma queda en `http://localhost:8080/api/v1/portfolio?lang=es`. En el workspace, el gateway común usa el puerto 80. Genera la clave solo en un entorno nuevo. `migrate:fresh` borra las tablas: para conservar datos, usa `migrate` y revisa por separado cualquier reseeding.
+Espero a que PHP-FPM esté disponible antes de ejecutar Artisan y genero `APP_KEY` solo al inicializar el entorno. La API autónoma usa `http://localhost:8080`; en el workspace accedo a ella a través del gateway en el puerto 80.
 
-## Verificación
-
-El runner instalado es PHPUnit, no Pest. Desde el Compose autónomo o la raíz del workspace:
+El Compose autónomo levanta la API y la base, así que en ese caso ejecuto el worker y el scheduler en terminales independientes:
 
 ```bash
-docker compose exec api php artisan test --compact tests/Feature/PortfolioApiTest.php
-docker compose exec api php artisan test --compact
-docker compose exec api php artisan route:list --path=api/v1 --no-interaction
+docker compose exec api php artisan queue:work contact-mail --queue=contacts --sleep=3 --tries=3 --timeout=30 --no-interaction
+docker compose exec api php artisan schedule:work --no-interaction
 ```
 
-La suite cubre el contrato bilingüe, datos editados en base de datos, migraciones de período y color, repetición del seeder, honeypot, sanitización, límites y autorización. [`phpunit.xml`](phpunit.xml) fuerza SQLite en memoria para aislar esas pruebas. Una suite verde no reemplaza verificar las migraciones sobre MySQL 8.4.
+En el workspace dejé ambos procesos como servicios de Compose.
 
-El Dockerfile de producción instala dependencias sin desarrollo y prepara PHP-FPM y OPcache. Las credenciales deben inyectarse en ejecución. Cache y sesiones usan archivos y la conexión de colas es síncrona; no hay workers desplegados. El despliegue conjunto está documentado en [portfolio-workspace](https://github.com/FelixSaucedo/portfolio-workspace).
+## Contenido
+
+Resuelvo las traducciones JSON `es` / `en` en el servidor. Uso colores `#RRGGBB` para que los registros no dependan de clases Tailwind; el layout y el contraste quedan en la UI.
+
+En [`PortfolioSeeder`](database/seeders/PortfolioSeeder.php) mantengo categorías, tecnologías, casos, bloques y trayectoria. Uso `updateOrCreate` para repetir el seeder sin duplicar registros:
+
+```bash
+docker compose exec api php artisan db:seed --class=PortfolioSeeder --no-interaction
+```
+
+Al repetir el seeder vuelvo a aplicar sus valores, incluso si los había editado directamente en la base. El seeder general conserva la contraseña de administradores existentes. Para actualizar el esquema uso `migrate`; `migrate:fresh` elimina todas las tablas.
+
+## Contrato HTTP
+
+`GET /api/v1/portfolio?lang=es|en` devuelve `200` con `hero`, `philosophies`, `case_studies`, `leadership`, `categories`, `skills` y `career`, sin envoltorio `data`. Sin idioma utiliza `es`; un idioma inválido devuelve `422`.
+
+`POST /api/v1/contact` acepta JSON:
+
+| Campo | Validación |
+| --- | --- |
+| `name` | Obligatorio; máximo 120 caracteres. |
+| `email` | Obligatorio; RFC y DNS; máximo 150 caracteres. |
+| `subject` | Opcional; máximo 150 caracteres. |
+| `message` | Obligatorio y no vacío tras sanitizar; máximo 3000 caracteres. |
+| `locale` | Opcional: `es` o `en`; español como fallback. |
+| `theme` | Opcional: `light` o `dark`; sin valor se adapta al cliente de correo. |
+| `_hp_company_url` | Honeypot; debe estar vacío. |
+
+En el formulario elimino etiquetas y caracteres de control, neutralizo saltos de cabecera y guardo únicamente los campos permitidos. Añadí un honeypot y un límite de **5 intentos por IP por minuto** para reducir el abuso sin pedir un CAPTCHA visual a quien quiere escribirme.
+
+| Estado | Significado |
+| --- | --- |
+| `201` | Contacto guardado y ambos correos encolados. JSON: `{"success":true,"message":"Message processed successfully."}`. |
+| `202` | Contacto guardado; despacho pendiente de recuperación. JSON incluye `success: true` y `notification_status: "pending"`. |
+| `422` | Validación o honeypot rechazado; objeto `errors`. |
+| `429` | Rate limit; header `Retry-After`. |
+| `404` | JSON `{"message":"Resource not found"}`. |
+| `405` | JSON `{"message":"Method not allowed"}` y header `Allow`. |
+| `500` | JSON genérico, sin trazas ni credenciales. |
+
+Los errores son JSON incluso sin `Accept: application/json`. Nginx rechaza cuerpos API mayores de 64 KB con `413` JSON.
+
+## Cola de correo
+
+En [`ContactProcessor`](app/Support/ContactProcessor.php) guardo primero el mensaje en `contacts` y su registro administrativo vinculado en `contact_submissions`. Después encolo una alerta para mí (`AdminNotificationMail`) y una confirmación para quien escribió (`UserAcknowledgmentMail`). Ambos jobs se registran de forma atómica en la conexión `contact-mail`, cola `contacts`, que usa base de datos independientemente de `QUEUE_CONNECTION`.
+
+Uso `mail_queued_at` para distinguir los contactos ya encolados de los que todavía necesitan despacho. Si la cola falla, conservo el contacto y lo recupero con `contacts:dispatch-pending`, programado cada minuto, sin duplicar jobs. Los correos Blade mantienen el idioma y el tema elegidos al enviar el formulario. Configuré un timeout SMTP de 15 segundos y tres intentos, con esperas de 60 y 300 segundos.
+
+```bash
+docker compose exec api php artisan contacts:dispatch-pending --no-interaction
+docker compose exec api php artisan queue:failed --no-interaction
+# Tras resolver la causa del fallo SMTP:
+docker compose exec api php artisan queue:retry all --no-interaction
+```
+
+Distingo entre guardar, encolar y entregar un correo. Si el envío agota sus intentos, reviso `failed_jobs` y resuelvo la causa antes de reintentarlo; el mensaje original permanece registrado.
+
+## Acceso administrativo
+
+Protejo la revisión de contactos y eventos con Sanctum. Rutas de [`routes/api.php`](routes/api.php):
+
+- `POST /api/v1/auth/login`: token Sanctum de 60 minutos; máximo 5 intentos por IP por minuto.
+- `POST /api/v1/auth/logout`: revoca el token actual.
+- `GET /api/v1/admin/submissions` y `GET /api/v1/admin/submissions/{uuid}`: lectura de contactos.
+- `DELETE /api/v1/admin/submissions/{uuid}`: elimina el registro administrativo y el contacto vinculado.
+- `GET /api/v1/admin/audit-logs`: consulta de eventos de seguridad.
+
+Para revisar contactos exijo token Bearer, ability `admin:read` y rol `super_admin`; para eliminarlos, también `admin:write`. Por ahora opero mediante la API: el proyecto no incluye una interfaz administrativa ni endpoints de edición del contenido.
+
+En la auditoría guardo el evento, un hash de la IP y los nombres de campos implicados, sin copiar el mensaje ni las credenciales al contexto. Un fallo de ese registro tampoco cambia la respuesta prevista del formulario. Estas capas reducen abuso básico; no considero el honeypot o el límite por IP una defensa completa contra ataques distribuidos.
+
+## Pruebas
+
+```bash
+docker compose exec api php artisan test --compact
+docker compose exec api php artisan route:list --no-interaction
+docker compose exec api php artisan view:cache --no-interaction
+```
+
+Pruebo los cambios con PHPUnit y una base aislada, normalmente SQLite en memoria. La suite cubre contratos HTTP, sanitización, autorización, contenido bilingüe, cola, reintentos y recuperación. Reviso también las migraciones sobre MySQL, porque una suite verde en SQLite no cubre todas las diferencias entre motores.
+
+Para producción uso `Dockerfile.prod`, dependencias sin desarrollo, `APP_DEBUG=false`, caché compartida en base de datos, worker y scheduler. Dejé Boost fuera de las rutas de producción y desactivé las rutas auxiliares de almacenamiento privado y cookies de Sanctum que esta API no utiliza.

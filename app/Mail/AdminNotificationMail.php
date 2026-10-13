@@ -33,14 +33,16 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        $subject = '[Portafolio] '.($this->contact->subject ?: 'Nuevo contacto de '.$this->contact->name);
+
         return new Envelope(
-            subject: '[Nuevo Contacto Portafolio]: '.($this->contact->subject ?: 'Consulta General'),
+            subject: $subject,
             replyTo: [new Address($this->contact->email, $this->contact->name)],
         );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'emails.admin_notification');
+        return new Content(view: 'emails.admin_notification', with: ['contact' => $this->contact]);
     }
 }

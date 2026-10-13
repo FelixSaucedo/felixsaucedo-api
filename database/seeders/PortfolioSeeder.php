@@ -4,6 +4,7 @@
  * Félix Saucedo — Senior Software Engineer & Technical Lead
  * Architecture & High-Throughput Core Engineering
  * GitHub: [https://github.com/FelixSaucedo](https://github.com/FelixSaucedo)
+ * Site: [felixsaucedo.com](https://felixsaucedo.com/)
  */
 
 declare(strict_types=1);
@@ -112,11 +113,11 @@ class PortfolioSeeder extends Seeder
                 ],
                 'problem' => [
                     'es' => 'Conectar múltiples plataformas DSPs con reportes heterogéneos y tiempos de respuesta variables. Un procesamiento síncrono bloqueaba los workers y amenazaba la disponibilidad de los dashboards.',
-                    'en' => 'Ingesting diverse reporting metrics from multiple DSPs with unpredictable latencies. Synchronous API calls saturated web workers and compromised real-time dashboard availability.',
+                    'en' => 'Ingesting diverse reporting metrics from multiple DSPs with unpredictable latencies. Synchronous API calls saturated web worker capacity, compromising real-time dashboard responsiveness.',
                 ],
                 'solution' => [
                     'es' => 'Desacoplar la recepción del procesamiento mediante colas SQS y microservicios serverless en Node.js/TypeScript. Si una API externa cae o se satura, la cola amortigua el tráfico sin pérdidas de datos.',
-                    'en' => 'Decoupling ingestion and computation using AWS SQS queues and serverless Node.js/TypeScript workers. When external endpoints degrade, the message queue buffers traffic safely without data loss.',
+                    'en' => 'Decoupling ingestion and computation using AWS SQS queues and serverless Node.js/TypeScript workers. When external endpoints degrade, message queues buffer incoming traffic, preventing data loss and isolating ingestion from downstream processing delays.',
                 ],
             ],
             [
@@ -160,7 +161,7 @@ class PortfolioSeeder extends Seeder
                     ],
                     'body' => [
                         'es' => 'Mi CV resume mis más de 12 años en desarrollo y liderazgo técnico. Este espacio muestra lo que no cabe en dos páginas: mi criterio para tomar decisiones de arquitectura, mi obsesión por la simplicidad y la forma en que colaboro para hacerle la vida más fácil al equipo y al negocio.',
-                        'en' => 'My resume outlines my 12+ years in software engineering and technical leadership. This space shows what cannot fit in two pages: my architectural decision criteria, my bias toward simplicity, and how I collaborate to make life easier for both the team and the business.',
+                        'en' => 'My resume outlines my 12+ years in software engineering and technical leadership. This space shows what cannot fit into two pages: my architectural decision criteria, my bias toward simplicity, and how I collaborate to make life easier for both the team and the business.',
                     ],
                 ],
             ]],
@@ -186,7 +187,7 @@ class PortfolioSeeder extends Seeder
                     ],
                     'body' => [
                         'es' => 'No automatizo por moda técnica. Mi objetivo al conectar APIs o armar flujos asíncronos es eliminar la carga operativa monótona para que los equipos comerciales y de operaciones puedan trabajar sin fricciones innecesarias.',
-                        'en' => "I don't automate for the sake of tech trends. My goal when bridging APIs or designing async pipelines is removing repetitive operational overhead so business and operations teams can focus on high-leverage work.",
+                        'en' => "I don't automate for the sake of tech trends. My goal when bridging APIs or designing async pipelines is removing repetitive operational overhead so business and operations teams can focus on their day-to-day work.",
                     ],
                 ],
                 [

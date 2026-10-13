@@ -4,6 +4,7 @@
  * Félix Saucedo — Senior Software Engineer & Technical Lead
  * Architecture & High-Throughput Core Engineering
  * GitHub: [https://github.com/FelixSaucedo](https://github.com/FelixSaucedo)
+ * Site: [felixsaucedo.com](https://felixsaucedo.com/)
  */
 
 declare(strict_types=1);

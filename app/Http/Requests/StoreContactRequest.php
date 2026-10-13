@@ -8,7 +8,7 @@ use App\Enums\SecurityEvent;
 use App\Enums\SecuritySeverity;
 use App\Support\SecurityAudit;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\ValidationException;
 
 class StoreContactRequest extends FormRequest
 {
@@ -25,7 +25,7 @@ class StoreContactRequest extends FormRequest
         if ($honeypot !== null && $honeypot !== '' && $honeypot !== []) {
             $audit->record($this, SecurityEvent::HoneypotTriggered, SecuritySeverity::Medium, ['_hp_company_url']);
 
-            throw new HttpResponseException(response()->json(['success' => true, 'message' => 'Message processed successfully.'], 201));
+            throw ValidationException::withMessages(['_hp_company_url' => 'The contact request could not be accepted.']);
         }
 
         $suspiciousFields = [];
@@ -44,9 +44,12 @@ class StoreContactRequest extends FormRequest
             if (is_string($value)) {
                 $value = trim(strip_tags($value));
                 if ($field !== 'message') {
-                    $value = preg_replace('/[\r\n]+/', ' ', $value);
+                    $value = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value);
                 }
-                $this->merge([$field => $value]);
+                if ($field === 'message') {
+                    $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value);
+                }
+                $this->merge([$field => trim($value)]);
             }
         }
     }
@@ -58,6 +61,8 @@ class StoreContactRequest extends FormRequest
             'email' => ['required', 'email:rfc,dns', 'max:150'],
             'subject' => ['nullable', 'string', 'max:150'],
             'message' => ['required', 'string', 'max:3000'],
+            'locale' => ['nullable', 'string', 'in:es,en'],
+            'theme' => ['nullable', 'string', 'in:light,dark'],
             '_hp_company_url' => ['prohibited'],
         ];
     }
