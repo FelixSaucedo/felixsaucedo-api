@@ -1,117 +1,134 @@
 # felixsaucedo-api
 
-Uso Laravel 13, PHP 8.4 y MySQL 8.4 para servir el contenido de mi portafolio y recibir contactos. Guardo los textos ES/EN y los colores en MySQL; Eloquent y Resources resuelven la respuesta que consume Vue.
+Esta es la API de [mi sitio personal](https://felixsaucedo.com). La uso para entregar el contenido en español e inglés, recibir los mensajes del formulario y enviar los correos de contacto.
 
-Separé la persistencia del contacto del despacho de correo para conservar el mensaje cuando falla la cola o SMTP.
+Trabajo con Laravel 13, PHP 8.4 y MySQL 8.4. Separé la API de la interfaz para mantener los datos del portafolio en un solo lugar y actualizar cada aplicación por separado.
 
-## Entorno
+## Cómo está organizada
 
-Normalmente ejecuto la API junto a la UI desde [portfolio-workspace](https://github.com/FelixSaucedo/portfolio-workspace). Reservo `.env` para configuración y secretos; mi trayectoria y los textos del sitio viven en la base de datos. En [`.env.example`](.env.example) dejé las variables que necesito preparar:
+Laravel recibe las solicitudes y prepara las respuestas que usa la interfaz en Vue. Con Eloquent, el sistema de modelos de Laravel, trabajo con los datos de MySQL. Uso Resources para elegir qué información devuelvo en JSON.
 
-| Variables | Uso |
+| Componente | Función |
 | --- | --- |
-| `APP_KEY`, `APP_ENV`, `APP_DEBUG`, `APP_URL` | Aplicación; conserva la clave y desactiva debug en producción. |
-| `DB_*` | Conexión MySQL. |
-| `PORTFOLIO_ADMIN_NAME`, `PORTFOLIO_ADMIN_EMAIL`, `PORTFOLIO_ADMIN_PASSWORD` | Administrador inicial; contraseña de al menos 16 caracteres. |
-| `MAIL_USERNAME`, `MAIL_PASSWORD` | Credenciales SMTP2GO. |
-| `MAIL_FROM_ADDRESS`, `PORTFOLIO_CONTACT_RECIPIENT` | `contacto@felixsaucedo.com`. |
+| Laravel 13 / PHP 8.4 | Gestiona las solicitudes, el contenido y los contactos. |
+| MySQL 8.4 | Guarda los textos, mi trayectoria y los mensajes recibidos. |
+| Eloquent y Resources | Permiten consultar los datos y preparar las respuestas de la API. |
+| Mailables y Blade | Definen los correos y sus plantillas en HTML. |
+| Worker de correo | Envía los correos pendientes en segundo plano. |
+| Scheduler de Laravel | Revisa si hay contactos cuyo envío de correos quedó pendiente. |
+| Sanctum | Gestiona la autenticación para consultar los contactos y los registros de actividad. |
 
-Configuré el correo con SMTP2GO en `mail.smtp2go.com:2525`, usando `MAIL_SCHEME=smtp` y `MAIL_ENCRYPTION=tls`.
+## Desarrollo local
 
-Para ejecutar la API por separado:
+Normalmente ejecuto la API junto a la interfaz desde [portfolio-workspace](https://github.com/FelixSaucedo/portfolio-workspace). Allí están las instrucciones para trabajar con el sitio completo.
+
+También puedo ejecutar esta API por separado con Docker. Desde la carpeta de este repositorio preparo el archivo de configuración:
 
 ```bash
 cp .env.example .env
-# Configura administrador y correo antes de continuar.
+```
+
+Antes de iniciar los servicios, completo los valores de [`.env.example`](.env.example):
+
+| Variables | Uso |
+| --- | --- |
+| `APP_*` | Configuración general de Laravel. |
+| `DB_*` | Conexión con la base de datos. |
+| `PORTFOLIO_ADMIN_*` | Datos del administrador inicial. |
+| `MAIL_*` | Configuración del correo. |
+| `PORTFOLIO_CONTACT_RECIPIENT` | Dirección donde recibo los mensajes del sitio. |
+
+Uso `contacto@felixsaucedo.com` como remitente y destinatario de las notificaciones. Las credenciales y los archivos `.env` quedan fuera de Git.
+
+```bash
 docker compose up -d --build
 docker compose exec api php artisan key:generate --no-interaction
 docker compose exec api php artisan migrate --no-interaction
 docker compose exec api php artisan db:seed --no-interaction
 ```
 
-Espero a que PHP-FPM esté disponible antes de ejecutar Artisan y genero `APP_KEY` solo al inicializar el entorno. La API autónoma usa `http://localhost:8080`; en el workspace accedo a ella a través del gateway en el puerto 80.
+Espero a que los servicios estén listos antes de ejecutar los comandos de Artisan, la herramienta de consola de Laravel. Genero la clave de la aplicación solo en la primera instalación y la conservo cuando actualizo el proyecto.
 
-El Compose autónomo levanta la API y la base, así que en ese caso ejecuto el worker y el scheduler en terminales independientes:
+La API queda disponible en `http://localhost:8080`. En este modo inicio los procesos de correo en dos terminales, una para cada comando:
 
 ```bash
-docker compose exec api php artisan queue:work contact-mail --queue=contacts --sleep=3 --tries=3 --timeout=30 --no-interaction
+docker compose exec api php artisan queue:work contact-mail --queue=contacts --no-interaction
+```
+
+```bash
 docker compose exec api php artisan schedule:work --no-interaction
 ```
 
-En el workspace dejé ambos procesos como servicios de Compose.
+En el workspace ambos procesos se ejecutan como servicios de Docker Compose.
 
-## Contenido
+## Contenido del portafolio
 
-Resuelvo las traducciones JSON `es` / `en` en el servidor. Uso colores `#RRGGBB` para que los registros no dependan de clases Tailwind; el layout y el contraste quedan en la UI.
+En [PortfolioSeeder](database/seeders/PortfolioSeeder.php) mantengo los textos, las tecnologías, los proyectos y mi trayectoria. El seeder carga esos datos en MySQL y me permite actualizar el contenido desde el código.
 
-En [`PortfolioSeeder`](database/seeders/PortfolioSeeder.php) mantengo categorías, tecnologías, casos, bloques y trayectoria. Uso `updateOrCreate` para repetir el seeder sin duplicar registros:
+Guardo las versiones en español e inglés juntas. La API elige el idioma solicitado y entrega los textos que necesita la interfaz. También guardo los colores como valores hexadecimales; Vue se encarga de cómo se presentan en el sitio.
+
+Para volver a cargar el contenido:
 
 ```bash
 docker compose exec api php artisan db:seed --class=PortfolioSeeder --no-interaction
 ```
 
-Al repetir el seeder vuelvo a aplicar sus valores, incluso si los había editado directamente en la base. El seeder general conserva la contraseña de administradores existentes. Para actualizar el esquema uso `migrate`; `migrate:fresh` elimina todas las tablas.
+Puedo repetir el seeder sin duplicar registros, pero vuelve a aplicar los valores del archivo. Esto también reemplaza los cambios que haya hecho directamente en esos registros de la base de datos.
 
-## Contrato HTTP
+Para actualizar las tablas uso `php artisan migrate`. `migrate:fresh` elimina las tablas y sus datos, así que no lo uso para actualizar una instalación que quiero conservar.
 
-`GET /api/v1/portfolio?lang=es|en` devuelve `200` con `hero`, `philosophies`, `case_studies`, `leadership`, `categories`, `skills` y `career`, sin envoltorio `data`. Sin idioma utiliza `es`; un idioma inválido devuelve `422`.
+## Rutas públicas
 
-`POST /api/v1/contact` acepta JSON:
-
-| Campo | Validación |
+| Método y ruta | Función |
 | --- | --- |
-| `name` | Obligatorio; máximo 120 caracteres. |
-| `email` | Obligatorio; RFC y DNS; máximo 150 caracteres. |
-| `subject` | Opcional; máximo 150 caracteres. |
-| `message` | Obligatorio y no vacío tras sanitizar; máximo 3000 caracteres. |
-| `locale` | Opcional: `es` o `en`; español como fallback. |
-| `theme` | Opcional: `light` o `dark`; sin valor se adapta al cliente de correo. |
-| `_hp_company_url` | Honeypot; debe estar vacío. |
+| `GET /api/v1/portfolio` | Devuelve el contenido del sitio en JSON. |
+| `POST /api/v1/contact` | Recibe un mensaje del formulario de contacto. |
 
-En el formulario elimino etiquetas y caracteres de control, neutralizo saltos de cabecera y guardo únicamente los campos permitidos. Añadí un honeypot y un límite de **5 intentos por IP por minuto** para reducir el abuso sin pedir un CAPTCHA visual a quien quiere escribirme.
+Para consultar el contenido en inglés uso `GET /api/v1/portfolio?lang=en`; para español, `?lang=es`. Si no indico un idioma, la API usa español.
 
-| Estado | Significado |
+La respuesta incluye `hero`, `philosophies`, `case_studies`, `leadership`, `categories`, `skills` y `career`, que corresponden a las secciones y los datos del portafolio.
+
+El formulario envía estos campos en JSON:
+
+| Campo | Uso |
 | --- | --- |
-| `201` | Contacto guardado y ambos correos encolados. JSON: `{"success":true,"message":"Message processed successfully."}`. |
-| `202` | Contacto guardado; despacho pendiente de recuperación. JSON incluye `success: true` y `notification_status: "pending"`. |
-| `422` | Validación o honeypot rechazado; objeto `errors`. |
-| `429` | Rate limit; header `Retry-After`. |
-| `404` | JSON `{"message":"Resource not found"}`. |
-| `405` | JSON `{"message":"Method not allowed"}` y header `Allow`. |
-| `500` | JSON genérico, sin trazas ni credenciales. |
+| `name` | Nombre de quien escribe; obligatorio. |
+| `email` | Correo al que enviaré la confirmación; obligatorio. |
+| `subject` | Motivo de contacto; opcional. |
+| `message` | Mensaje; obligatorio. |
+| `locale` | Idioma del correo: `es` o `en`. Si no se envía, uso español. |
+| `theme` | Tema del correo: `light` o `dark`. Si no se envía, dejo que se adapte al cliente de correo. |
 
-Los errores son JSON incluso sin `Accept: application/json`. Nginx rechaza cuerpos API mayores de 64 KB con `413` JSON.
+La API revisa los datos antes de guardarlos y devuelve respuestas JSON para que la interfaz pueda mostrar el resultado:
 
-## Cola de correo
+| Estado HTTP | Qué significa |
+| --- | --- |
+| `200` | El contenido se consultó correctamente. |
+| `201` | El mensaje quedó guardado y los correos están en cola. |
+| `202` | El mensaje quedó guardado, pero los correos siguen pendientes de entrar en la cola. |
+| `422` | Hay datos que corregir; la respuesta incluye los errores por campo. |
+| `429` | Se hicieron demasiados intentos; hay que esperar antes de volver a enviar. |
+| `404` | La ruta solicitada no existe. |
+| `405` | La ruta no admite el método utilizado. |
+| `500` | Ocurrió un error en el servidor. |
 
-En [`ContactProcessor`](app/Support/ContactProcessor.php) guardo primero el mensaje en `contacts` y su registro administrativo vinculado en `contact_submissions`. Después encolo una alerta para mí (`AdminNotificationMail`) y una confirmación para quien escribió (`UserAcknowledgmentMail`). Ambos jobs se registran de forma atómica en la conexión `contact-mail`, cola `contacts`, que usa base de datos independientemente de `QUEUE_CONNECTION`.
+## Correos de contacto
 
-Uso `mail_queued_at` para distinguir los contactos ya encolados de los que todavía necesitan despacho. Si la cola falla, conservo el contacto y lo recupero con `contacts:dispatch-pending`, programado cada minuto, sin duplicar jobs. Los correos Blade mantienen el idioma y el tema elegidos al enviar el formulario. Configuré un timeout SMTP de 15 segundos y tres intentos, con esperas de 60 y 300 segundos.
+Primero guardo el mensaje y después preparo dos correos: una notificación para mí y una confirmación para quien escribió. Uso Mailables de Laravel para definirlos y Blade para sus plantillas.
 
-```bash
-docker compose exec api php artisan contacts:dispatch-pending --no-interaction
-docker compose exec api php artisan queue:failed --no-interaction
-# Tras resolver la causa del fallo SMTP:
-docker compose exec api php artisan queue:retry all --no-interaction
-```
+Los correos mantienen el idioma y el tema elegidos en el formulario. El envío se procesa en segundo plano, con reintentos cuando falla. Si no puedo poner los correos en cola, el contacto queda guardado y el scheduler revisa su envío más adelante.
 
-Distingo entre guardar, encolar y entregar un correo. Si el envío agota sus intentos, reviso `failed_jobs` y resuelvo la causa antes de reintentarlo; el mensaje original permanece registrado.
+La respuesta del formulario confirma que guardé el mensaje; la entrega del correo ocurre después. Así puedo revisar el contacto aunque haya un problema con el envío.
 
-## Acceso administrativo
+## Administración
 
-Protejo la revisión de contactos y eventos con Sanctum. Rutas de [`routes/api.php`](routes/api.php):
+Uso Sanctum para autenticar el acceso a los contactos recibidos y los registros de actividad. Por ahora hago estas consultas mediante la API; el proyecto no incluye una interfaz administrativa.
 
-- `POST /api/v1/auth/login`: token Sanctum de 60 minutos; máximo 5 intentos por IP por minuto.
-- `POST /api/v1/auth/logout`: revoca el token actual.
-- `GET /api/v1/admin/submissions` y `GET /api/v1/admin/submissions/{uuid}`: lectura de contactos.
-- `DELETE /api/v1/admin/submissions/{uuid}`: elimina el registro administrativo y el contacto vinculado.
-- `GET /api/v1/admin/audit-logs`: consulta de eventos de seguridad.
-
-Para revisar contactos exijo token Bearer, ability `admin:read` y rol `super_admin`; para eliminarlos, también `admin:write`. Por ahora opero mediante la API: el proyecto no incluye una interfaz administrativa ni endpoints de edición del contenido.
-
-En la auditoría guardo el evento, un hash de la IP y los nombres de campos implicados, sin copiar el mensaje ni las credenciales al contexto. Un fallo de ese registro tampoco cambia la respuesta prevista del formulario. Estas capas reducen abuso básico; no considero el honeypot o el límite por IP una defensa completa contra ataques distribuidos.
+El seeder general crea el administrador con los valores de `PORTFOLIO_ADMIN_*`. Si ese usuario ya existe, conserva su contraseña.
 
 ## Pruebas
+
+Uso PHPUnit para comprobar el contenido bilingüe, las respuestas de la API, el formulario, los permisos y el procesamiento de correos.
 
 ```bash
 docker compose exec api php artisan test --compact
@@ -119,6 +136,10 @@ docker compose exec api php artisan route:list --no-interaction
 docker compose exec api php artisan view:cache --no-interaction
 ```
 
-Pruebo los cambios con PHPUnit y una base aislada, normalmente SQLite en memoria. La suite cubre contratos HTTP, sanitización, autorización, contenido bilingüe, cola, reintentos y recuperación. Reviso también las migraciones sobre MySQL, porque una suite verde en SQLite no cubre todas las diferencias entre motores.
+El primer comando ejecuta las pruebas, el segundo muestra las rutas y el tercero comprueba que las plantillas Blade compilan.
 
-Para producción uso `Dockerfile.prod`, dependencias sin desarrollo, `APP_DEBUG=false`, caché compartida en base de datos, worker y scheduler. Dejé Boost fuera de las rutas de producción y desactivé las rutas auxiliares de almacenamiento privado y cookies de Sanctum que esta API no utiliza.
+Las pruebas usan una base de datos separada, normalmente SQLite en memoria. También reviso las migraciones con MySQL, porque ambos motores tienen diferencias que pueden afectar al proyecto.
+
+## Despliegue
+
+Publico la API como parte del sitio en AWS, con Docker. Uso `Dockerfile.prod` para preparar la imagen de producción y mantengo el envío de correos en procesos separados. La configuración que une API, interfaz y servicios está en [portfolio-workspace](https://github.com/FelixSaucedo/portfolio-workspace).
